@@ -1,6 +1,6 @@
 # High-Performance C++ Matching Engine
 
-A portfolio project for building and measuring a price/time priority limit order book and matching engine. The current starter implements **resting limit orders only**; crossing orders can coexist until matching is added.
+A portfolio project for building and measuring a price/time priority limit order book and matching engine. The engine accepts limit and market orders, executes against resting orders, and reports trades.
 
 ## Build and run
 
@@ -20,12 +20,13 @@ ctest --test-dir build --output-on-failure
 - Orders at the same price retain arrival order in a linked list.
 - An order ID index supports direct lookup for cancellation.
 - Empty levels disappear when their last order is canceled.
-- This first version favors clarity. Benchmark before changing containers or allocation.
+- Incoming orders match the best opposite price first, then the oldest order at that price. Trades execute at the resting order's price.
+- Unfilled limit quantity rests; unfilled market quantity expires. Order IDs must be unique among active resting orders.
+- This version favors clarity. Benchmark before changing containers or allocation.
 
 ## Next milestones
 
-1. Add a matching engine that consumes incoming limit and market orders, emits trades, handles partial fills, and never rests an unfilled market order.
-2. Define replace-order priority and rejection rules; test fills, cancellations, and price/time priority with deterministic event sequences.
-3. Add repeatable latency and throughput benchmarks with documented hardware, compiler flags, and workloads.
-4. Add event replay. Distinguish reconstructing a book from historical add/cancel/execute messages from simulating incoming orders through this engine.
+1. Define replace-order priority and rejection rules; expand deterministic tests for more edge cases.
+2. Add repeatable latency and throughput benchmarks with documented hardware, compiler flags, and workloads.
+3. Add event replay. Distinguish reconstructing a book from historical add/cancel/execute messages from simulating incoming orders through this engine.
 

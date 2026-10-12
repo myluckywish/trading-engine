@@ -2,6 +2,7 @@
 
 #include <iterator>
 #include <limits>
+#include <algorithm>
 
 namespace trading_engine {
 
@@ -71,6 +72,51 @@ std::optional<LevelView> OrderBook::best_ask() const {
 }
 
 std::size_t OrderBook::order_count() const noexcept { return locations_.size(); }
+
+bool OrderBook::contains(OrderId id) const { return locations_.contains(id); }
+
+bool OrderBook::would_overflow(Side side, Price price, Quantity quantity) const {
+    if (side == Side::Buy) {
+        const auto it = bids_.find(price);
+        return it != bids_.end() &&
+               quantity > std::numeric_limits<Quantity>::max() - it->second.total_quantity;
+    }
+    const auto it = asks_.find(price);
+    return it != asks_.end() &&
+           quantity > std::numeric_limits<Quantity>::max() - it->second.total_quantity;
+}
+
+OrderBook::Fill OrderBook::consume_best(Side resting_side, Quantity max_quantity) {
+    if (resting_side == Side::Buy) {
+        auto level_it = bids_.begin();
+        auto& level = level_it->second;
+        auto& order = level.orders.front();
+        const auto executed = std::min(max_quantity, order.quantity);
+        const Fill fill{order.id, level_it->first, executed};
+        order.quantity -= executed;
+        level.total_quantity -= executed;
+        if (order.quantity == 0) {
+            locations_.erase(order.id);
+            level.orders.pop_front();
+            if (level.orders.empty()) bids_.erase(level_it);
+        }
+        return fill;
+    }
+
+    auto level_it = asks_.begin();
+    auto& level = level_it->second;
+    auto& order = level.orders.front();
+    const auto executed = std::min(max_quantity, order.quantity);
+    const Fill fill{order.id, level_it->first, executed};
+    order.quantity -= executed;
+    level.total_quantity -= executed;
+    if (order.quantity == 0) {
+        locations_.erase(order.id);
+        level.orders.pop_front();
+        if (level.orders.empty()) asks_.erase(level_it);
+    }
+    return fill;
+}
 
 }  // namespace trading_engine
 

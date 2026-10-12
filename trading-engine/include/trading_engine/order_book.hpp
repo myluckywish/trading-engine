@@ -26,7 +26,9 @@ struct LevelView {
     OrderId oldest_order_id;
 };
 
-// Stores resting limit orders. It does not execute trades yet.
+class MatchingEngine;
+
+// Stores resting limit orders; MatchingEngine controls execution.
 class OrderBook {
 public:
     AddResult add_limit(const Order& order);
@@ -35,8 +37,20 @@ public:
     [[nodiscard]] std::optional<LevelView> best_bid() const;
     [[nodiscard]] std::optional<LevelView> best_ask() const;
     [[nodiscard]] std::size_t order_count() const noexcept;
+    [[nodiscard]] bool contains(OrderId id) const;
 
 private:
+    friend class MatchingEngine;
+
+    struct Fill {
+        OrderId resting_order_id;
+        Price price;
+        Quantity quantity;
+    };
+
+    [[nodiscard]] bool would_overflow(Side side, Price price, Quantity quantity) const;
+    Fill consume_best(Side resting_side, Quantity max_quantity);
+
     struct PriceLevel {
         std::list<Order> orders;  // Arrival order is FIFO within one price level.
         Quantity total_quantity = 0;
